@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ɴᴇxᴄʜᴀᴛ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-dark: #5649c0;
+            --background: #121212;
+            --surface: #1e1e1e;
+            --surface-light: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--surface);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            position: relative;
+            animation: messageIn 0.3s ease-out;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            background-color: var(--primary);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            align-self: flex-start;
+            background-color: var(--surface-light);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-left: 0.5rem;
+        }
+
+        .message.sent .message-time {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .message-text {
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .input-area {
+            background-color: var(--surface);
+            padding: 1rem;
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            border-top: 1px solid #333;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            background-color: var(--surface-light);
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: none;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        /* Scrollbar and responsive styles... */
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>World Chat</h1>
+        </div>
+
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <h3>Welcome to World Chat</h3>
+                    <p>Start chatting with people from around the world.</p>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <textarea class="message-input" id="messageInput" placeholder="Type your message..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4dE0ESNDw5qnhbA-vNbzezNj466lp4wA",
+            authDomain: "nexchat-5af28.firebaseapp.com",
+            databaseURL: "https://nexchat-5af28-default-rtdb.firebaseio.com/",
+            projectId: "nexchat-5af28",
+            storageBucket: "nexchat-5af28.appspot.com",
+            messagingSenderId: "331915382629",
+            appId: "1:331915382629:web:a84a2c17d39d259d961b8c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // DOM elements
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        // User setup with validation
+        const currentUser = {
+            id: 'user_' + Math.random().toString(36).substr(2, 9),
+            name: generateRandomName()
+        };
+
+        function generateRandomName() {
+            const adjectives = ['Happy', 'Funny', 'Clever', 'Brave', 'Gentle', 'Lucky'];
+            const nouns = ['Cat', 'Owl', 'Fox', 'Wolf', 'Eagle', 'Lion'];
+            return `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+        }
+
+        // Message handling with validation
+        function sendMessage() {
+            const text = (messageInput.value || '').trim();
+            
+            if (!text) {
+                messageInput.focus();
+                return;
+            }
+
+            const message = {
+                text: text,
+                userName: currentUser.name,
+                userId: currentUser.id,
+                timestamp: Date.now()
+            };
+
+            // Validate all fields before sending
+            if (message.text && message.userName && message.timestamp) {
+                push(ref(database, 'messages'), message)
+                    .then(() => {
+                        messageInput.value = '';
+                        scrollToBottom();
+                    })
+                    .catch(error => {
+                        console.error("Error sending message:", error);
+                    });
+            }
+        }
+
+        // Display messages with validation
+        function appendMessage(message) {
+            // Validate the message object
+            if (!message || typeof message !== 'object') return;
+            if (!message.text || !message.userName || !message.timestamp) return;
+
+            // Remove empty state if it exists
+            const emptyState = messagesContainer.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            const isSent = message.userId === currentUser.id;
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            // Format time with validation
+            let timeString = 'Just now';
+            try {
+                const time = new Date(message.timestamp);
+                if (!isNaN(time.getTime())) {
+                    timeString = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+            } catch (e) {
+                console.warn("Invalid timestamp:", message.timestamp);
+            }
+
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="message-sender">${escapeHtml(message.userName)}</span>
+                    <span class="message-time">${timeString}</span>
+                </div>
+                <div class="message-text">${escapeHtml(message.text)}</div>
+            `;
+            
+            messagesContainer.appendChild(messageElement);
+            scrollToBottom();
+        }
+
+        // Basic HTML escaping for security
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Event listeners
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Initialize chat
+        onValue(ref(database, 'messages'), (snapshot) => {
+            messagesContainer.innerHTML = '';
+            
+            if (snapshot.exists()) {
+                snapshot.forEach((childSnapshot) => {
+                    const message = childSnapshot.val();
+                    appendMessage(message);
+                });
+                scrollToBottom();
+            } else {
+                showEmptyState();
+            }
+        });
+
+        function showEmptyState() {
+            messagesContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-comments"></i>
+                    <h3>Hello welcome to  Nexchat</h3>
+                    <p>Start chatting with people from around the world.Share this app to your friend 😊. made by Team Nepo🤩</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
